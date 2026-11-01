@@ -143,7 +143,7 @@ python tools/run.py                  # 不同初始药水下的整局失败率�
 
 ## 演示视频
 
-[Bilibili：魔法坩埚玩法 Demo（约 3.5 分钟）](https://www.bilibili.com/video/BV1yBxs6CEn6/)
+[Bilibili：魔法坩埚玩法Demo：6关颜色推理 + DDA动态难度设计](https://www.bilibili.com/video/BV1yBxs6CEn6/)（约 3.5 分钟）
 
 视频含中文配音与字幕；配音为 AI 合成语音，画面为真实运行的 Demo 录屏。
 
