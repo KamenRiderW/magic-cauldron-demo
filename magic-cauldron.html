@@ -1,0 +1,1175 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>Magic Cauldron Demo</title>
+<meta name="description" content="魔法坩埚玩法 demo（滑动药水台版）">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;900&display=swap">
+<style>
+  /* 单一视觉：暖色药剂房 + 紫砖墙（参照参考图） */
+  :root{
+    --ground:#231437;
+    --purple:#8b3fd1; --purple-deep:#5d1f9a; --purple-band:#7a2fc0;
+    --brick:#9a6cd3; --mortar:#8559c2;
+    --gold:#ffc83d; --gold-deep:#c98a12;
+    --slab:#4a5d88; --slab-top:#6479a6; --slab-ok:#4fae37; --slab-ok-top:#86d85f;
+    --navy:#2a3564; --cream:#fff6dc; --ink:#3a1a55;
+    --title:"Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    --body:"Nunito", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  html,body{height:100%}
+  body{background:var(--ground);font-family:var(--body);color:var(--cream);
+    background-image:radial-gradient(ellipse at 50% 0%, #3b2160, transparent 70%);
+    padding-inline:16px;padding-block:12px;box-sizing:border-box;display:flex;justify-content:center;gap:16px}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  button:disabled{cursor:default}
+
+  .app{width:min(430px,100%);height:100%;max-height:930px;min-height:640px;display:flex;flex-direction:column;
+    border-radius:22px;overflow:hidden;position:relative;box-shadow:0 20px 60px #0009;background:var(--brick);user-select:none}
+
+  /* ---------- 场景 ---------- */
+  .scene{flex:0 0 34%;min-height:210px;position:relative;overflow:hidden;
+    background-color:#c99a82;
+    background-image:
+      linear-gradient(180deg,transparent 62%,#d8b3e2 62%),
+      repeating-linear-gradient(0deg,#b58670 0 2px,transparent 2px 22px),
+      repeating-linear-gradient(90deg,#b58670 0 2px,transparent 2px 46px)}
+  .floor{position:absolute;left:-10%;right:-10%;bottom:-40%;height:80%;border-radius:50%;
+    background:radial-gradient(ellipse,#e7c9ef 0 30%,#c9a0d6 31% 33%,#dcbbe6 34% 55%,#c9a0d6 56% 58%,#d8b3e2 59%)}
+  .window{position:absolute;left:50%;top:-6%;width:30%;height:58%;transform:translateX(-50%);
+    border-radius:999px 999px 0 0;background:linear-gradient(#bfe6ff,#fff3c4 70%);border:8px solid #f0dcc0;box-shadow:inset 0 0 0 4px #d7a54a}
+  .window::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:5px;background:#d7a54a;transform:translateX(-50%)}
+  .window::after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:12px;background:#e6cfae;border-radius:3px}
+  .bookcase{position:absolute;left:3%;top:4%;width:24%;height:60%;background:#7c3f22;border-radius:40px 40px 4px 4px;padding:18% 8% 0;display:grid;gap:9%;
+    box-shadow:inset 0 0 0 5px #5e2c16}
+  .bookcase i{display:block;height:16px;border-bottom:4px solid #5e2c16;
+    background:repeating-linear-gradient(90deg,#3f8a4a 0 7px,#d8b14a 7px 11px,#c0392b 11px 17px,#2f6fb8 17px 22px,#5e2c16 22px 23px)}
+  .wall-shelf{position:absolute;right:4%;width:24%;height:6px;background:#8a4526;border-radius:2px;box-shadow:0 4px 0 #5e2c16}
+  .wall-shelf span{position:absolute;bottom:6px;width:14px;height:18px;border-radius:50% 50% 40% 40%}
+  .ball{position:absolute;left:18%;top:46%;width:13%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff 0 6%,#6fd3ff 20%,#1f5fbf 80%);box-shadow:0 18px 0 -6px #1f8b86}
+  .round-btn{position:absolute;top:10px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+    font:26px/1 var(--title);color:#fff;border:3px solid #fff;box-shadow:0 3px 0 #0004;z-index:3}
+  .round-btn.info{left:10px;background:radial-gradient(circle at 40% 30%,#6cc0ff,#1f6fd6)}
+  .round-btn.close{right:10px;background:radial-gradient(circle at 40% 30%,#ff7a6e,#d3261e)}
+
+  .pedestal{position:absolute;left:50%;bottom:4%;width:46%;height:22%;transform:translateX(-50%);border-radius:50%;
+    background:radial-gradient(ellipse,#8b7f96 0 40%,#b9aec4 41% 70%,#9c8faa 71%)}
+  .cauldron{position:absolute;left:50%;bottom:9%;width:46%;transform:translateX(-50%);z-index:1}
+  .cauldron svg{display:block;width:100%;height:auto;overflow:visible}
+  .cauldron .glow{position:absolute;left:10%;right:10%;top:-30%;height:60%;border-radius:50%;
+    background:radial-gradient(ellipse,var(--brew,#e05cff) 0%,transparent 70%);opacity:.55;transition:background .6s;filter:blur(6px)}
+  .cauldron.burst{animation:burst .8s ease}
+  .mouth{position:absolute;left:30%;right:30%;top:8%;height:12%}
+  #liquid{transition:fill .5s}
+  .bub{animation:bub 1.8s infinite ease-in;transform-box:fill-box;transform-origin:center}
+
+  .book{position:absolute;right:3%;top:24%;width:30%;z-index:1;display:grid;justify-items:center}
+  .book .pages{width:100%;aspect-ratio:1.55;background:linear-gradient(90deg,#fbeede 49%,#d9c3a8 50%,#fbeede 51%);
+    border:4px solid #8e2a2a;border-radius:6px;transform:rotate(6deg);display:grid;grid-template-columns:1fr 1fr;align-items:center;box-shadow:0 4px 0 #0003}
+  .book .l{color:#6b3a1f;text-align:center;font:14px/1.05 var(--title)}
+  .book .l b{display:block;font-size:22px;font-weight:400}
+  .book .r{display:grid;justify-items:center;margin:8%;padding:4px 0;background:#3fae4a;border-radius:4px}
+  .book .r svg{width:62%;height:auto}
+  .book .r small{font:12px/1 var(--title);color:#fff;text-shadow:0 1px 0 #0006}
+  .book .post{width:12%;height:34px;background:linear-gradient(90deg,#b5302f,#e05050,#b5302f);clip-path:polygon(0 0,100% 0,100% 80%,50% 100%,0 80%)}
+  .timer{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:6px;
+    padding:3px 12px 3px 3px;border-radius:999px;background:#f3e3c7;border:3px solid #c9a36b;color:#4a2a10;font:16px/1 var(--title)}
+  .timer svg{width:24px;height:24px}
+
+  /* ---------- 横幅 + 进度 ---------- */
+  .band{position:relative;z-index:2;background:var(--purple-band);box-shadow:0 4px 0 #0003;padding:0 12px 12px;border-bottom:4px solid #4c1780}
+  .banner{margin:-14px auto 8px;width:88%;padding:6px 10px 8px;text-align:center;border-radius:14px;
+    background:linear-gradient(#a654e8,#7a2ac4);border:4px solid var(--gold);box-shadow:0 0 0 3px #b77b10, 0 5px 0 #3f0f6b}
+  .banner h1{margin:0;font:400 clamp(26px,8vw,36px)/1 var(--title);color:var(--cream);letter-spacing:.01em;
+    -webkit-text-stroke:1px #3f0f6b;text-shadow:0 3px 0 #3f0f6b}
+  .progress{display:flex;align-items:center;gap:8px}
+  .bar{flex:1;height:26px;border-radius:8px;background:#163a66;border:3px solid var(--gold);display:flex;padding:2px;gap:2px}
+  .bar i{flex:1;border-radius:3px;background:#1e5aa0}
+  .bar i.on{background:linear-gradient(#8de05a,#3f9e2c)}
+  .chest{width:54px;flex:none}
+  .chest svg{width:100%;height:auto;display:block}
+
+  .counter-row{position:relative;z-index:3;display:flex;justify-content:center;margin-top:-6px;height:0}
+  .counter{display:flex;align-items:center;gap:6px;padding:3px 6px 3px 4px;border-radius:12px;background:var(--purple-deep);
+    border:4px solid var(--gold);box-shadow:0 4px 0 #3f0f6b;font:26px/1 var(--title);color:var(--cream);height:46px;
+    -webkit-text-stroke:.5px #3f0f6b}
+  .counter svg{width:34px;height:34px}
+  .counter .n{min-width:48px;text-align:center;font-variant-numeric:tabular-nums}
+  .counter.bump{animation:bump .3s}
+  .counter.shake{animation:shake .4s}
+  .plus{width:28px;height:28px;border-radius:8px;background:linear-gradient(#7ee05b,#3b9a2a);border:2px solid #fff;font:22px/1 var(--title);color:#fff}
+
+  /* ---------- 药水台 ---------- */
+  .board{flex:1;position:relative;overflow:hidden;
+    background-color:var(--brick);
+    background-image:
+      repeating-linear-gradient(0deg,var(--mortar) 0 3px,transparent 3px 44px),
+      repeating-linear-gradient(90deg,var(--mortar) 0 3px,transparent 3px 88px);
+    box-shadow:inset 0 10px 18px #0002}
+  .board{touch-action:none;cursor:grab}
+  .board.dragging{cursor:grabbing}
+  .scroll{position:absolute;left:0;right:0;bottom:6px;will-change:transform}
+  .scroll.snap{transition:transform .35s cubic-bezier(.3,.8,.3,1)}
+  .rows{display:flex;flex-direction:column;padding-top:34px}
+  .scroll-hint{position:absolute;left:50%;top:58px;white-space:nowrap;font-size:13px!important;transform:translateX(-50%);z-index:2;padding:4px 12px;border-radius:999px;
+    background:#3f0f6bcc;border:2px solid var(--gold);font:14px/1.2 var(--title);color:var(--cream);pointer-events:none;transition:opacity .25s}
+  .back-btn{position:absolute;right:10px;bottom:10px;z-index:3;padding:6px 12px;border-radius:10px;background:linear-gradient(#6cc0ff,#1f6fd6);
+    border:3px solid #fff;font:15px/1 var(--title);color:#fff;box-shadow:0 3px 0 #0005;animation:pop .25s ease}
+  .row{height:var(--rowH);display:flex;justify-content:center;align-items:flex-end;padding-bottom:12px}
+  .shelf{display:flex;filter:drop-shadow(0 7px 0 #0000002e)}
+  .cell{width:var(--cell);display:flex;flex-direction:column;align-items:center;position:relative}
+  .holder{height:calc(var(--rowH) - 50px);width:100%;display:flex;justify-content:center;align-items:flex-end;position:relative}
+  .bottle,.ghost{width:var(--bw);aspect-ratio:60/72;position:relative;z-index:1}
+  .bottle svg,.ghost svg,.tray-b svg,.fly svg{width:100%;height:100%;display:block;overflow:visible}
+  .bottle{transition:transform .15s}
+  .bottle:not(:disabled):hover{transform:translateY(-4px)}
+  .bottle.hidden{visibility:hidden}
+  .bottle.hop{animation:hop .45s}
+  .bottle.wobble{animation:shake .35s}
+  .ghost{opacity:.18;pointer-events:none}
+  .splat{position:absolute;left:50%;bottom:8%;width:calc(var(--cell)*1.05);transform:translateX(-50%);pointer-events:none}
+  .splat.new{animation:splat .35s ease-out}
+  .slab{width:100%;height:30px;background:linear-gradient(var(--slab-top) 0 30%,var(--slab) 30%);border-left:2px solid #2f3d60;transition:background .3s}
+  .cell:first-child .slab{border-radius:8px 0 0 8px;border-left:0}
+  .cell:last-child .slab{border-radius:0 8px 8px 0}
+  .cell.ok .slab{background:linear-gradient(var(--slab-ok-top) 0 30%,var(--slab-ok) 30%)}
+  .cell.ok.flash .slab{animation:flash .5s}
+
+  /* ---------- 底部托盘 ---------- */
+  .tray{flex:0 0 auto;min-height:104px;position:relative;background:linear-gradient(#35427a,var(--navy));border-top:4px solid #1b2349;
+    display:flex;justify-content:center;align-items:center;gap:6px;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));overflow:hidden}
+  .tray-b{width:var(--tw);aspect-ratio:60/72;transition:transform .15s, opacity .2s}
+  .tray-b:not(:disabled):hover{transform:translateY(-5px)}
+  .tray-b.taken{opacity:.22}
+  .tray-b.arriving{visibility:hidden}
+  .tray-b.in{animation:slideIn .45s cubic-bezier(.2,.9,.3,1.2) backwards}
+  .tray.out .tray-b{transition:transform .3s ease-in, opacity .3s;transform:translateX(-160%);opacity:0}
+
+  /* ---------- 开发者面板 ---------- */
+  .dev-toggle{position:absolute;left:10px;top:58px;z-index:3;padding:3px 8px;border-radius:8px;background:#0e1416cc;border:1.5px solid #2ed3b7;
+    color:#2ed3b7;font:700 11px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em}
+  .dev{--d-bg:#0e1416;--d-panel:#141d20;--d-line:#24343a;--d-text:#dfe8e6;--d-muted:#8fa3a0;--d-acc:#2ed3b7;
+    width:360px;flex:none;height:100%;max-height:930px;overflow:auto;background:var(--d-bg);color:var(--d-text);
+    border:1px solid var(--d-line);border-radius:16px;padding:12px 14px 16px;font:12px/1.5 var(--body);user-select:text}
+  @media (max-width:860px){
+    .dev{position:fixed;left:0;right:0;bottom:0;width:auto;height:62%;max-height:none;border-radius:16px 16px 0 0;z-index:25;
+      box-shadow:0 -10px 40px #000a;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  }
+  .dev h3{margin:14px 0 6px;font:700 10px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.16em;color:var(--d-acc)}
+  .dev .top{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-12px;background:var(--d-bg);padding:4px 0 6px;z-index:1}
+  .dev .top b{font:700 13px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.1em;color:var(--d-acc)}
+  .dev button,.dev select,.dev input{font:inherit;color:var(--d-text)}
+  .dev .x{border:1px solid var(--d-line);border-radius:6px;padding:2px 8px;color:var(--d-muted)}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--d-line);border-radius:8px;overflow:hidden}
+  .seg button{padding:6px 2px;border-right:1px solid var(--d-line);color:var(--d-muted)}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--d-acc);color:#06221d;font-weight:800}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;align-items:baseline}
+  .kv dt{color:var(--d-muted)} .kv dd{margin:0;font-family:ui-monospace,Menlo,Consolas,monospace;text-align:right;overflow-wrap:anywhere}
+  .ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+  .ctl label{display:flex;gap:5px;align-items:center;color:var(--d-muted)}
+  .ctl select,.ctl input[type=number]{background:var(--d-panel);border:1px solid var(--d-line);border-radius:6px;padding:3px 6px}
+  .ctl input[type=number]{width:62px}
+  .dbtn{background:var(--d-panel);border:1px solid var(--d-line);border-radius:6px;padding:4px 9px}
+  .dbtn:hover:not(:disabled){border-color:var(--d-acc)}
+  .dbtn.on{background:var(--d-acc);color:#06221d;font-weight:800}
+  .dbtn:disabled{opacity:.4}
+  .wrow{display:grid;grid-template-columns:28px 1fr 42px;gap:8px;align-items:center;margin:3px 0;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .wbar{height:8px;border-radius:4px;background:var(--d-panel);position:relative;overflow:hidden;border:1px solid var(--d-line)}
+  .wbar i{position:absolute;left:0;top:0;bottom:0;background:var(--d-acc)}
+  .wbar.total i{background:var(--lvl,#4fd18b)}
+  .wbar .tick{position:absolute;top:-1px;bottom:-1px;width:1px;background:#ffffff55}
+  .wrow span:last-child{text-align:right}
+  .chip{display:inline-block;padding:1px 8px;border-radius:999px;font-weight:800;color:#06221d}
+  .lv-green{background:#4fd18b} .lv-yellow{background:#e8d44d} .lv-orange{background:#f2b84b} .lv-red{background:#ff6b6b}
+  .dnote{color:var(--d-muted);font-size:11px;margin:4px 0 0}
+  .dev table{width:100%;border-collapse:collapse;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace}
+  .dev th{color:var(--d-muted);font-weight:400;text-align:right;border-bottom:1px solid var(--d-line);padding:2px 3px}
+  .dev td{text-align:right;border-bottom:1px solid var(--d-line);padding:2px 3px}
+  .dev th:first-child,.dev td:first-child{text-align:left}
+  .answer{display:inline-flex;gap:3px;vertical-align:middle}
+  .answer i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid #fff6}
+  .logline{background:var(--d-panel);border:1px solid var(--d-line);border-radius:6px;padding:5px 8px;font-size:11px;margin-top:6px}
+  .simres{margin-top:6px}
+
+  /* ---------- 弹层 ---------- */
+  .fx{position:fixed;inset:0;pointer-events:none;z-index:40}
+  .fly{position:fixed;pointer-events:none;will-change:transform}
+  .p{position:fixed;pointer-events:none;border-radius:2px}
+  .modal{position:absolute;inset:0;background:#12062acc;display:grid;place-items:center;padding:16px;z-index:30}
+  .sheet{width:100%;max-width:330px;border-radius:20px;background:linear-gradient(#a654e8,#6d22b4);border:4px solid var(--gold);
+    box-shadow:0 0 0 3px #b77b10,0 10px 30px #000a;padding:18px 16px 16px;text-align:center;display:grid;gap:12px;animation:pop .3s ease}
+  .sheet h2{margin:0;font:400 30px/1 var(--title);-webkit-text-stroke:1px #3f0f6b;text-shadow:0 3px 0 #3f0f6b}
+  .sheet .body{background:#fff6dc;color:var(--ink);border-radius:12px;padding:12px;font-size:14px;line-height:1.55;text-align:left}
+  .sheet .body.center{text-align:center}
+  .sheet .gift{display:grid;justify-items:center;gap:4px;font:22px/1 var(--title)}
+  .sheet .gift svg{width:74px;height:auto}
+  .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .btn{padding:10px 22px;border-radius:12px;border:3px solid #fff;font:20px/1 var(--title);color:#fff;box-shadow:0 4px 0 #0005}
+  .btn.go{background:linear-gradient(#8ee865,#3d9f2b);text-shadow:0 2px 0 #1f5c14}
+  .btn.warn{background:linear-gradient(#ff7a6e,#d3261e)}
+  .btn.plain{background:linear-gradient(#6cc0ff,#1f6fd6)}
+  .lv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .lv button{border-radius:12px;padding:10px 4px;border:3px solid #fff;display:grid;gap:4px;font:18px/1 var(--title);color:#fff;box-shadow:0 4px 0 #0005}
+  .lv small{font-size:14px}
+  .lv .n1{background:linear-gradient(#6cc0ff,#1f6fd6)} .lv .n2{background:linear-gradient(#ff9a4a,#d55a10)} .lv .n3{background:linear-gradient(#ff6fa8,#b3176a)}
+  .ruleslist{margin:0;padding-left:1.2em}
+
+  @keyframes bub{0%{transform:translateY(0) scale(.5);opacity:0}30%{opacity:1}100%{transform:translateY(-18px) scale(1.1);opacity:0}}
+  @keyframes hop{40%{transform:translateY(-14px)}70%{transform:translateY(2px)}}
+  @keyframes shake{20%{transform:translateX(-5px) rotate(-6deg)}40%{transform:translateX(5px) rotate(6deg)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+  @keyframes bump{50%{transform:scale(1.12)}}
+  @keyframes splat{from{transform:translateX(-50%) scale(.2);opacity:0}}
+  @keyframes flash{50%{filter:brightness(1.6)}}
+  @keyframes slideIn{from{transform:translateX(320%);opacity:0}}
+  @keyframes pop{from{transform:scale(.6);opacity:0}}
+  @keyframes burst{30%{transform:translateX(-50%) scale(1.08)}60%{transform:translateX(-50%) scale(.97)}}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+</style>
+
+<div class="app" id="app">
+  <section class="scene">
+    <div class="floor"></div>
+    <div class="window"></div>
+    <div class="bookcase"><i></i><i></i><i></i></div>
+    <div class="ball"></div>
+    <div class="wall-shelf" style="top:14%"><span style="left:10%;background:#6ab7e6"></span><span style="left:45%;background:#b05be0"></span></div>
+    <div class="wall-shelf" style="top:28%"><span style="left:25%;background:#e0a040"></span><span style="left:70%;background:#58c07a"></span></div>
+    <button class="round-btn info" id="btn-info" aria-label="玩法说明">i</button>
+    <button class="round-btn close" id="btn-reset" aria-label="重置活动">✕</button>
+    <button class="dev-toggle" id="dev-toggle" aria-controls="dev">DEV</button>
+    <div class="pedestal"></div>
+    <div class="cauldron" id="cauldron">
+      <div class="glow"></div>
+      <svg viewBox="0 0 200 160" aria-hidden="true">
+        <defs>
+          <radialGradient id="cu" cx="38%" cy="35%" r="75%"><stop offset="0" stop-color="#f7a25a"/><stop offset=".55" stop-color="#cf6a2b"/><stop offset="1" stop-color="#8a3c14"/></radialGradient>
+        </defs>
+        <ellipse cx="18" cy="62" rx="12" ry="16" fill="none" stroke="#e7b43c" stroke-width="7"/>
+        <ellipse cx="182" cy="62" rx="12" ry="16" fill="none" stroke="#e7b43c" stroke-width="7"/>
+        <path d="M22 40 C10 110 50 158 100 158 C150 158 190 110 178 40 Z" fill="url(#cu)"/>
+        <path d="M24 70 Q100 92 176 70 L174 84 Q100 106 26 84 Z" fill="#9c461a" opacity=".85"/>
+        <ellipse cx="100" cy="36" rx="86" ry="20" fill="#e8894a"/>
+        <ellipse cx="100" cy="36" rx="76" ry="14" fill="#5a2410"/>
+        <ellipse id="liquid" cx="100" cy="38" rx="72" ry="11" fill="#d85cf0"/>
+        <g id="bubs">
+          <circle class="bub" cx="70" cy="38" r="4" fill="#ffffffaa"/><circle class="bub" cx="112" cy="36" r="5" fill="#ffffffaa" style="animation-delay:.6s"/>
+          <circle class="bub" cx="138" cy="40" r="3" fill="#ffffffaa" style="animation-delay:1.1s"/><circle class="bub" cx="90" cy="41" r="3" fill="#ffffffaa" style="animation-delay:1.4s"/>
+        </g>
+        <path d="M50 110 Q70 130 96 134" fill="none" stroke="#ffffff40" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div class="mouth" id="mouth"></div>
+    </div>
+    <div class="book">
+      <div class="pages"><div class="l">Reward<b id="reward-no">1</b></div><div class="r" id="reward-ico"></div></div>
+      <div class="post"></div>
+    </div>
+    <div class="timer"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#fff" stroke="#4a2a10" stroke-width="2"/><path d="M12 5v7l5 3" stroke="#4a2a10" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span id="timer">1d 18h</span></div>
+  </section>
+
+  <div class="band">
+    <div class="banner"><h1>Magic Cauldron</h1></div>
+    <div class="progress">
+      <div class="bar" id="bar"></div>
+      <div class="chest" id="chest"></div>
+    </div>
+  </div>
+  <div class="counter-row">
+    <div class="counter" id="counter"><span id="counter-ico"></span><span class="n" id="count">0</span><button class="plus" id="btn-earn" aria-label="获取药水">+</button></div>
+  </div>
+
+  <section class="board" id="board">
+    <div class="scroll-hint" id="scroll-hint">↕ 拖动台子查看之前的排列</div>
+    <div class="scroll" id="scroll"><div class="rows" id="rows"></div></div>
+    <button class="back-btn" id="back-btn" hidden>回到当前 ▼</button>
+  </section>
+
+  <footer class="tray" id="tray"></footer>
+
+  <div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
+</div>
+<aside class="dev" id="dev" aria-label="开发者面板" hidden></aside>
+<div class="fx" id="fx"></div>
+
+<script>
+/* ======================= 配置 ======================= */
+const CONFIG = {
+  startElixirs: 60,                                // 随机 T/cap 方案下的推荐初始药水
+  eventDuration: (42 * 3600 + 20 * 60) * 1000,   // 活动剩余时长（演示）
+  colors: [
+    { id:'red',    name:'红', hex:'#ef3b3b' },
+    { id:'blue',   name:'蓝', hex:'#35a6f2' },
+    { id:'green',  name:'绿', hex:'#3cc43c' },
+    { id:'yellow', name:'黄', hex:'#ffc928' },
+    { id:'purple', name:'紫', hex:'#b04ce8' },
+    { id:'orange', name:'橙', hex:'#ff8a1f' },
+  ],
+  rewardNames: { coin:'金币', rocket:'火箭', bomb:'炸弹', heart:'无限生命', orb:'光球', chest:'大宝箱' },
+  // [槽位数, 可选颜色数（= 槽位数）, 奖励类型, 数量, T 最大值, cap 最大值]
+  // T：第 T 次检测之前不会判全对；cap：非全对时单次最多标对 cap 格。每关开局在 0~最大值间均匀随机，0 表示不限制
+  steps: [
+    [3,3,'coin','×100', 0,0], [4,4,'rocket','×2', 3,1], [4,4,'heart','30m', 3,1],
+    [5,5,'bomb','×2',   3,2], [5,5,'orb','×2',    3,2], [6,6,'chest','×1',  3,2],
+  ].map(([slots, colorCount, reward, amount, Tmax, capMax]) => ({ slots, colorCount, reward, amount, Tmax, capMax })),
+  levels: [ { name:'普通', gain:3, cls:'n1' }, { name:'困难', gain:6, cls:'n2' }, { name:'超难', gain:10, cls:'n3' } ],
+  saveKey: 'magic-cauldron-demo-v7',
+  devKey: 'magic-cauldron-dev-v3',
+};
+
+/* ======================= 工具 ======================= */
+const $ = id => document.getElementById(id);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep = ms => new Promise(r => setTimeout(r, reduced ? 0 : ms));
+const colorOf = id => CONFIG.colors.find(c => c.id === id);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]] } return a };
+function shade(hex, amt){ // amt<0 变暗
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => Math.max(0, Math.min(255, Math.round(c + amt * 255)));
+  return '#' + [f(n >> 16), f(n >> 8 & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+/* ======================= 图形 ======================= */
+function bottleSVG(hex){
+  return `<svg viewBox="0 0 60 72" aria-hidden="true">
+    <ellipse cx="30" cy="69" rx="18" ry="3" fill="#0000002a"/>
+    <rect x="22" y="12" width="16" height="12" fill="#d9f0ff" opacity=".75"/>
+    <circle cx="30" cy="45" r="24" fill="#e6f5ff" opacity=".55" stroke="#ffffff" stroke-width="2"/>
+    <path d="M9.9 36 A22 22 0 1 0 50.1 36 Z" fill="${hex}"/>
+    <ellipse cx="30" cy="36" rx="20.1" ry="4" fill="${shade(hex, .18)}"/>
+    <path d="M14 50 A17 17 0 0 0 26 63" stroke="${shade(hex, -.18)}" stroke-width="3" fill="none" opacity=".6"/>
+    <ellipse cx="19" cy="31" rx="4" ry="7" fill="#fff" opacity=".7" transform="rotate(25 19 31)"/>
+    <rect x="17" y="3" width="26" height="11" rx="4" fill="${shade(hex, -.08)}" stroke="${shade(hex, -.3)}" stroke-width="1.5"/>
+    <rect x="20" y="5" width="12" height="3" rx="1.5" fill="#fff" opacity=".45"/>
+  </svg>`;
+}
+function rainbowFlask(){
+  return `<svg viewBox="0 0 60 72" aria-hidden="true"><defs><linearGradient id="rb" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ff4d4d"/><stop offset=".25" stop-color="#ffc928"/><stop offset=".5" stop-color="#3cc43c"/><stop offset=".75" stop-color="#35a6f2"/><stop offset="1" stop-color="#b04ce8"/></linearGradient></defs>
+    <rect x="22" y="12" width="16" height="12" fill="#d9f0ff"/>
+    <path d="M22 22 L8 56 A10 10 0 0 0 17 68 H43 A10 10 0 0 0 52 56 L38 22Z" fill="url(#rb)" stroke="#fff" stroke-width="2.5"/>
+    <rect x="17" y="3" width="26" height="11" rx="4" fill="#3aa0e8" stroke="#1d5a96" stroke-width="1.5"/></svg>`;
+}
+function splatSVG(hex, seed){
+  const r = rng(seed), pts = [], N = 14;
+  for (let i = 0; i < N; i++){
+    const a = i / N * Math.PI * 2 + r() * .2;
+    const rad = i % 2 ? 14 + r() * 5 : 22 + r() * 14;
+    pts.push([50 + Math.cos(a) * rad, 50 + Math.sin(a) * rad]);
+  }
+  const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  let d = `M${mid(pts[N - 1], pts[0]).join(' ')}`;
+  for (let i = 0; i < N; i++){ const m = mid(pts[i], pts[(i + 1) % N]); d += ` Q${pts[i].join(' ')} ${m.join(' ')}` }
+  const drops = [0,1,2].map(() => { const a = r() * 6.28, dd = 38 + r() * 8; return `<circle cx="${50 + Math.cos(a) * dd}" cy="${50 + Math.sin(a) * dd}" r="${2 + r() * 3}" fill="${hex}"/>` }).join('');
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${d}Z" fill="${hex}"/>${drops}</svg>`;
+}
+const ICONS = {
+  coin:  `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="#ffc83d" stroke="#b77b10" stroke-width="3"/><circle cx="20" cy="20" r="10" fill="none" stroke="#e39b16" stroke-width="3"/></svg>`,
+  rocket:`<svg viewBox="0 0 40 40"><path d="M20 3c8 6 9 16 5 26h-10C11 19 12 9 20 3z" fill="#e8eef5" stroke="#5a6b80" stroke-width="2"/><circle cx="20" cy="15" r="4" fill="#35a6f2"/><path d="M15 29l-6 6 2-10zM25 29l6 6-2-10z" fill="#ef3b3b"/><path d="M16 30h8l-4 8z" fill="#ffc83d"/></svg>`,
+  bomb:  `<svg viewBox="0 0 40 40"><circle cx="18" cy="23" r="14" fill="#2c2f3a"/><circle cx="13" cy="18" r="4" fill="#fff" opacity=".35"/><rect x="24" y="6" width="7" height="8" rx="2" fill="#6b6f7c" transform="rotate(35 27 10)"/><circle cx="33" cy="5" r="3.5" fill="#ffc83d"/></svg>`,
+  heart: `<svg viewBox="0 0 40 40"><path d="M20 35S4 25 4 14a8 8 0 0 1 16-2 8 8 0 0 1 16 2c0 11-16 21-16 21z" fill="#ef3b5b" stroke="#fff" stroke-width="2.5"/><text x="20" y="22" font-size="11" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="900">∞</text></svg>`,
+  orb:   `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="#b04ce8"/><circle cx="15" cy="15" r="7" fill="#35a6f2"/><circle cx="25" cy="14" r="6" fill="#ffc928"/><circle cx="24" cy="25" r="7" fill="#3cc43c"/><circle cx="14" cy="25" r="5" fill="#ef3b3b"/><circle cx="14" cy="12" r="3" fill="#fff" opacity=".8"/></svg>`,
+  chest: `<svg viewBox="0 0 60 48"><rect x="4" y="18" width="52" height="28" rx="4" fill="#8e44c9" stroke="#ffc83d" stroke-width="3"/><path d="M4 20 Q30 -4 56 20Z" fill="#a95be0" stroke="#ffc83d" stroke-width="3"/><rect x="24" y="16" width="12" height="14" rx="2" fill="#ffc83d"/><path d="M27 30h6l2 10h-10z" fill="#ef3b3b" stroke="#fff" stroke-width="1.5"/></svg>`,
+};
+
+/* ======================= DDA 引擎（V1.1 方案） ======================= */
+const DDA = (() => {
+  // 离线表：单关消耗分布，按 (n, T, cap) 分组；理性随机玩家，每组 20,000 次模拟。
+  // 键 "n-T-cap"：T 取 1 表示不限制（T=0 与 T=1 等价），cap 取 0 表示不设上限。
+  const DIST = {"3-1-0":{"3":0.2487,"5":0.7513},"4-1-0":{"4":0.0693,"6":0.3977,"7":0.5331},"4-1-1":{"4":0.1095,"7":0.8904},"4-2-0":{"6":0.4284,"7":0.5716},"4-2-1":{"7":1.0},"4-3-0":{"6":0.4315,"10":0.5685},"4-3-1":{"10":1.0},"5-1-0":{"5":0.0138,"7":0.1314,"8":0.2691,"9":0.0945,"11":0.269,"12":0.2223},"5-1-1":{"5":0.0219,"9":0.4572,"12":0.5209},"5-1-2":{"5":0.0152,"8":0.3039,"9":0.1132,"11":0.3132,"12":0.2545},"5-2-0":{"7":0.1362,"8":0.2627,"9":0.0966,"11":0.2748,"12":0.2296},"5-2-1":{"9":0.4644,"12":0.5355},"5-2-2":{"8":0.309,"9":0.1129,"11":0.3159,"12":0.2621},"5-3-0":{"7":0.1363,"11":0.596,"12":0.2676},"5-3-1":{"11":0.3386,"12":0.6614},"5-3-2":{"11":0.6966,"12":0.3034},"6-1-0":{"6":0.0022,"8":0.0316,"9":0.0861,"10":0.0466,"11":0.0176,"12":0.1359,"13":0.2134,"14":0.1615,"15":0.1216,"17":0.1081,"18":0.0756},"6-1-1":{"6":0.004,"11":0.0624,"15":0.6727,"18":0.2609},"6-1-2":{"6":0.0025,"10":0.0539,"11":0.027,"12":0.152,"13":0.1273,"14":0.2176,"15":0.1633,"17":0.1518,"18":0.1047},"6-2-0":{"8":0.0333,"9":0.0841,"10":0.0463,"11":0.0174,"12":0.141,"13":0.2129,"14":0.1642,"15":0.1173,"17":0.109,"18":0.0747},"6-2-1":{"11":0.0576,"15":0.6724,"18":0.2701},"6-2-2":{"10":0.0548,"11":0.0261,"12":0.1568,"13":0.127,"14":0.2253,"15":0.1598,"17":0.1462,"18":0.104},"6-3-0":{"8":0.034,"12":0.2447,"13":0.2397,"14":0.1671,"15":0.1218,"17":0.1135,"18":0.0792},"6-3-1":{"15":0.7186,"18":0.2814},"6-3-2":{"12":0.1882,"13":0.1505,"14":0.2257,"15":0.1713,"17":0.156,"18":0.1082}};
+  const E = {3:4.5, 4:7.25, 5:10.36, 6:14.49};  // 期望消耗（T、cap 在 0~最大值间均匀随机）
+  const M = {3:5, 4:10, 5:12, 6:18};             // 最坏消耗（各组合穷举取最大）
+  const PM = { green:0, yellow:.3, orange:.6, red:.9 };
+  const LV_NAME = { green:'绿 · 安全', yellow:'黄 · 注意', orange:'橙 · 警告', red:'红 · 危险' };
+  const LV_HEX = { green:'#4fd18b', yellow:'#e8d44d', orange:'#f2b84b', red:'#ff6b6b' };
+  const keyOf = (n, T, cap) => `${n}-${T > 1 ? T : 1}-${cap}`;
+
+  const permCache = {};
+  function perms(n){
+    if (permCache[n]) return permCache[n];
+    const out = [], a = [...Array(n).keys()];
+    const rec = k => { if (k === n) { out.push(a.slice()); return }
+      for (let i = k; i < n; i++){ [a[k], a[i]] = [a[i], a[k]]; rec(k + 1); [a[k], a[i]] = [a[i], a[k]] } };
+    rec(0);
+    return permCache[n] = out;
+  }
+  // 抽取本关 T / cap：tc = 'random' | 'max' | 'off'
+  function drawTC(Tmax, capMax, tc, rnd = Math.random){
+    if (tc === 'off') return { T: 0, cap: 0 };
+    if (tc === 'max') return { T: Tmax, cap: capMax };
+    return { T: Math.floor(rnd() * (Tmax + 1)), cap: Math.floor(rnd() * (capMax + 1)) };
+  }
+  // 某一关在给定抽取方式下的消耗分布（random 时为所有组合的平均）
+  function levelDist(n, Tmax, capMax, tc){
+    const combos = tc === 'random'
+      ? [...Array(Tmax + 1).keys()].flatMap(T => [...Array(capMax + 1).keys()].map(c => [T, c]))
+      : [[tc === 'max' ? Tmax : 0, tc === 'max' ? capMax : 0]];
+    const d = {};
+    combos.forEach(([T, c]) => Object.entries(DIST[keyOf(n, T, c)]).forEach(([k, p]) => d[k] = (d[k] || 0) + p / combos.length));
+    return d;
+  }
+  const expOf = d => Object.entries(d).reduce((s, [k, p]) => s + k * p, 0);
+  const surv = (key, cost) => Object.entries(DIST[key]).reduce((s, [k, p]) => s + (+k >= cost ? p : 0), 0);
+  const w2Of = bad => [0, .3, .7, 1][Math.min(bad, 3)];
+  // rest: [{n, Tmax, capMax}]
+  function w3Of(pot, rest, tc){
+    if (!rest.length) return 0;
+    const e = rest.reduce((s, l) => s + expOf(levelDist(l.n, l.Tmax, l.capMax, tc)), 0);
+    const m = rest.reduce((s, l) => s + Math.max(...Object.keys(levelDist(l.n, l.Tmax, l.capMax, tc)).map(Number)), 0);
+    if (pot >= m) return 0;
+    const r = (pot - e) / (m - e);
+    return r < 0 ? 1 : r < .5 ? .7 : .4;
+  }
+  const alertOf = W => W >= .7 ? 'red' : W >= .5 ? 'orange' : W >= .3 ? 'yellow' : 'green';
+  function pfail(rest, pot, tc){       // P(剩余关卡消耗总和 > pot)，仅保底规则
+    let d = {0: 1};
+    for (const l of rest){
+      const ld = levelDist(l.n, l.Tmax, l.capMax, tc), o = {};
+      for (const [x, p] of Object.entries(d)) for (const [y, q] of Object.entries(ld)) o[+x + +y] = (o[+x + +y] || 0) + p * q;
+      d = o;
+    }
+    return Object.entries(d).reduce((s, [k, p]) => s + (+k > pot ? p : 0), 0);
+  }
+  const restStats = (rest, tc) => ({
+    E: rest.reduce((s, l) => s + expOf(levelDist(l.n, l.Tmax, l.capMax, tc)), 0),
+    M: rest.reduce((s, l) => s + Math.max(...Object.keys(levelDist(l.n, l.Tmax, l.capMax, tc)).map(Number)), 0),
+  });
+  function newState(){ return { w1h: [], bad: 0, W1: 0, W2: 0, W3: 0, W: 0, alert: 'green' } }
+  // 关卡结算：q 按本关实际抽到的 (T, cap) 查表，只衡量「同配置下的运气」
+  function settle(st, n, T, cap, cost, potAfter, rest, tc){
+    const q = surv(keyOf(n, T, cap), cost);
+    const w = q <= .10 ? 1 : q <= .25 ? .6 : q <= .5 ? .2 : 0;
+    st.w1h.unshift(w); st.w1h.length = Math.min(st.w1h.length, 3);
+    st.W1 = .5 * (st.w1h[0] || 0) + .3 * (st.w1h[1] || 0) + .2 * (st.w1h[2] || 0);
+    st.bad = w >= .6 ? st.bad + 1 : (w === 0 ? 0 : st.bad);
+    st.W2 = w2Of(st.bad);
+    st.W3 = w3Of(potAfter, rest, tc);
+    st.W = .35 * st.W1 + .25 * st.W2 + .40 * st.W3;
+    st.alert = alertOf(st.W);
+    return { q, w1: w };
+  }
+  // 选答案。attempt 从 1 开始；T：第 T 次之前不判全对；cap：非全对时最多标对 cap 格（0 = 不限）
+  function selectTarget(C, guess, free, p, attempt, T, cap, rnd = Math.random){
+    const k = free.length, n = guess.length;
+    const groups = new Map();
+    for (const x of C){
+      let key = 0, m = 0;
+      for (const i of free) if (x[i] === guess[i]){ key |= 1 << i; m++ }
+      if (!groups.has(key)) groups.set(key, { m, xs: [] });
+      groups.get(key).xs.push(x);
+    }
+    const all = [...groups.values()];
+    const notes = [];
+    const allowed = capV => {
+      let g = all;
+      if (attempt < T){ const nf = g.filter(v => v.m < k); if (nf.length) g = nf; else notes.push('只剩全对可选') }
+      const nz = g.filter(v => v.m >= 1);
+      if (nz.length) g = nz; else notes.push('玩家重复已知错误，允许 0 格');
+      if (capV > 0){ const cg = g.filter(v => v.m <= capV || v.m === k); if (cg.length) g = cg }
+      return g;
+    };
+    let g = allowed(cap), hit = false, reason = '保底集合内随机';
+    const P = g.reduce((s, v) => s + v.xs.length, 0);
+    if (p > 0 && rnd() < p){
+      const cap2 = cap > 0 ? Math.max(cap, n - 3) : 0;
+      let g2 = allowed(cap2);
+      if (attempt === 1){ const nf = g2.filter(v => v.m < k); if (nf.length) g2 = nf }   // 干预不在首次直接给全对
+      const b = Math.max(...g2.map(v => v.m));
+      g = g2.filter(v => v.m === b); hit = true; reason = `倾向匹配命中（p=${p}，上限放宽到 ${cap2 || '不限'}）`;
+    }
+    const pool = g.flatMap(v => v.xs);
+    const t = pool[Math.floor(rnd() * pool.length)];
+    const marks = free.reduce((s, i) => s + (t[i] === guess[i]), 0);
+    if (notes.length) reason += ' · ' + [...new Set(notes)].join(' · ');
+    return { target: t, C: C.length, P, hit, marks, reason };
+  }
+  const filterC = (C, free, guess, target) => C.filter(x => free.every(i => (x[i] === guess[i]) === (target[i] === guess[i])));
+
+  // 整局无动画模拟（开发者面板用）；levels: [{n, Tmax, capMax}]
+  function simulate(runs, { start, mode, force, levels, tc }){
+    let fails = 0, spentOk = 0, okN = 0, interv = 0, tries1 = 0, tries2 = 0, lvN = 0; const failAt = {};
+    for (let r = 0; r < runs; r++){
+      let pot = start, st = newState(), failed = false, any = false;
+      for (let li = 0; li < levels.length && !failed; li++){
+        const { n, Tmax, capMax } = levels[li];
+        const { T, cap } = mode === 'fixed' ? { T: 0, cap: 0 } : drawTC(Tmax, capMax, tc);
+        const lvl = mode === 'dda' ? (force || st.alert) : 'green';
+        if (lvl !== 'green') any = true;
+        const p = n > 3 ? PM[lvl] : 0;
+        let C = perms(n), free = [...Array(n).keys()], cost = 0, att = 0;
+        const secret = mode === 'fixed' ? C[Math.floor(Math.random() * C.length)] : null;
+        while (free.length){
+          if (pot - cost < free.length){ failed = true; break }
+          const g = C[Math.floor(Math.random() * C.length)];
+          cost += free.length; att++;
+          const tgt = mode === 'fixed' ? secret : selectTarget(C, g, free, p, att, T, cap).target;
+          C = filterC(C, free, g, tgt);
+          free = free.filter(i => g[i] !== tgt[i]);
+        }
+        if (failed){ failAt[li + 1] = (failAt[li + 1] || 0) + 1; break }
+        lvN++; if (att === 1) tries1++; if (att <= 2) tries2++;
+        pot -= cost;
+        settle(st, n, T, cap, cost, pot, levels.slice(li + 1), tc);
+      }
+      if (failed) fails++; else { okN++; spentOk += start - pot }
+      if (any) interv++;
+    }
+    return { runs, fail: fails / runs, spent: okN ? spentOk / okN : 0, interv: interv / runs, failAt,
+             p1: lvN ? tries1 / lvN : 0, p2: lvN ? tries2 / lvN : 0 };
+  }
+  return { DIST, E, M, PM, LV_NAME, LV_HEX, keyOf, perms, drawTC, levelDist, restStats, pfail, newState, settle, selectTarget, filterC, simulate };
+})();
+
+/* 开发者设置（与游戏进度分开保存，重开不丢） */
+let DEV = { open: matchMedia('(min-width: 861px)').matches, mode: 'dda', force: '', start: CONFIG.startElixirs, tc: 'random',
+            allowEarn: false, showAnswer: false };
+try { Object.assign(DEV, JSON.parse(localStorage.getItem(CONFIG.devKey)) || {}) } catch (e) {}
+// 配置里的默认初始药水变了，就以配置为准（避免旧的面板设置覆盖）
+if (DEV.cfgStart !== CONFIG.startElixirs){ DEV.start = CONFIG.startElixirs; DEV.cfgStart = CONFIG.startElixirs }
+function saveDev(){ try { localStorage.setItem(CONFIG.devKey, JSON.stringify(DEV)) } catch (e) {} }
+
+/* ======================= 状态 ======================= */
+let S, busy = false;
+const inflight = new Set();   // 正在飞向台子的格子索引
+const step = () => CONFIG.steps[S.step];
+const curRow = () => S.rows[S.rows.length - 1];
+
+function makeRow(slots, prev){
+  return { cells: Array.from({ length: slots }, (_, i) =>
+    prev && prev.cells[i].ok ? { c: prev.cells[i].c, ok: true, locked: true } : { c: null }) };
+}
+const levelNs = () => CONFIG.steps.map(s => s.slots);
+const levelSpecs = (from = 0) => CONFIG.steps.slice(from).map(s => ({ n: s.slots, Tmax: s.Tmax, capMax: s.capMax }));
+const idsOf = n => CONFIG.colors.slice(0, n).map(c => c.id);
+function initStep(i){
+  const st = CONFIG.steps[i];
+  // 固定答案（对照组）在开局确定；其余模式延迟到每次检测时从一致候选集中选
+  S.secret = DEV.mode === 'fixed' ? shuffle(idsOf(st.slots)) : null;
+  S.rows = [makeRow(st.slots)];
+  const tc = DEV.mode === 'fixed' ? { T: 0, cap: 0 } : DDA.drawTC(st.Tmax, st.capMax, DEV.tc);
+  S.lv = { cost: 0, tries: 0, startPot: S.elixirs, pfail: DDA.pfail(levelSpecs(i), S.elixirs, DEV.tc),
+           alert: DEV.mode === 'dda' ? (DEV.force || S.dda.alert) : 'green', mode: DEV.mode, tc: DEV.tc,
+           T: tc.T, cap: tc.cap, last: null };
+}
+function freshState(){
+  S = { step: 0, elixirs: DEV.start, finished: false, endAt: Date.now() + CONFIG.eventDuration,
+        dda: DDA.newState(), hist: [], firstGuesses: [] };
+  initStep(0);
+}
+/* 一致候选集 C：满足所有已检测格子（对 = 相等，错 = 不等）的排列，以颜色下标表示 */
+function candidates(){
+  const n = step().slots, ids = idsOf(n);
+  const cons = [];
+  S.rows.forEach(row => row.cells.forEach((c, i) => { if (c.ok !== undefined && c.c) cons.push([i, ids.indexOf(c.c), c.ok]) }));
+  return DDA.perms(n).filter(x => cons.every(([i, k, ok]) => (x[i] === k) === ok));
+}
+function curPMatch(){ const n = step().slots; return S.lv.mode === 'dda' && n > 3 ? DDA.PM[S.lv.alert] : 0 }
+function tendencyOf(guess, prev){
+  const n = guess.length, ids = idsOf(n);
+  if (guess.every((c, i) => c === ids[i])) return '顺序型';
+  if (guess.every((c, i) => c === ids[n - 1 - i])) return '逆序型';
+  if (prev){ const common = prev.filter(c => guess.includes(c)); const sub = guess.filter(c => prev.includes(c));
+    if (common.length >= 3 && common.join() === sub.join()) return '沿用型' }
+  return '随机型';
+}
+function save(){ try { localStorage.setItem(CONFIG.saveKey, JSON.stringify(S)) } catch (e) {} }
+function load(){
+  try { const s = JSON.parse(localStorage.getItem(CONFIG.saveKey)); if (s && s.rows && s.dda && s.lv) { S = s; return true } } catch (e) {}
+  return false;
+}
+
+/* ======================= 布局 ======================= */
+let geo = { rowH: 150, cell: 90 };
+function layout(){
+  const board = $('board'), W = board.clientWidth, H = board.clientHeight;
+  const slots = step().slots;
+  geo.rowH = Math.max(120, Math.min(170, Math.floor((H - 14) / 2)));
+  geo.cell = Math.min(96, Math.floor((W - 36) / slots));
+  const rows = $('rows');
+  rows.style.setProperty('--rowH', geo.rowH + 'px');
+  rows.style.setProperty('--cell', geo.cell + 'px');
+  rows.style.setProperty('--bw', Math.min(70, Math.floor(geo.cell * .78), geo.rowH - 64) + 'px');
+  const tw = Math.min(58, Math.floor((W - 30) / step().colorCount) - 6);
+  $('tray').style.setProperty('--tw', tw + 'px');
+}
+
+/* ======================= 渲染 ======================= */
+function renderHud(){
+  $('count').textContent = S.elixirs;
+  $('btn-earn').hidden = !DEV.allowEarn;
+  $('bar').innerHTML = CONFIG.steps.map((_, i) => `<i class="${i < S.step || S.finished ? 'on' : ''}"></i>`).join('');
+  const st = step();
+  $('reward-no').textContent = Math.min(S.step + 1, CONFIG.steps.length);
+  $('reward-ico').innerHTML = `${ICONS[st.reward]}<small>${st.amount}</small>`;
+  renderTimer();
+}
+function renderTimer(){
+  const ms = Math.max(0, S.endAt - Date.now()), h = Math.floor(ms / 3600e3), m = Math.floor(ms / 60e3) % 60;
+  $('timer').textContent = h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h ${m}m`;
+}
+function cellHTML(cell, r, i, isCur){
+  let inner = '';
+  if (cell.ok === false){
+    inner = `<div class="splat">${splatSVG(colorOf(cell.c).hex, cell.seed)}</div>`;
+  } else if (cell.c){
+    const canTake = isCur && !cell.locked && !busy;
+    const hid = isCur && inflight.has(i) ? ' hidden' : '';
+    inner = `<button class="bottle${hid}" data-r="${r}" data-i="${i}" ${canTake ? '' : 'disabled'} aria-label="${colorOf(cell.c).name}色药水${canTake ? '（点击取回）' : ''}">${bottleSVG(colorOf(cell.c).hex)}</button>`;
+  } else if (isCur){
+    inner = `<div class="ghost">${bottleSVG('#ffffff')}</div>`;
+  }
+  return `<div class="cell ${cell.ok ? 'ok' : ''}" data-r="${r}" data-i="${i}"><div class="holder">${inner}</div><div class="slab"></div></div>`;
+}
+function renderRows(){
+  const from = 0;
+  $('rows').innerHTML = S.rows.slice(from).map((row, k) => {
+    const r = from + k, isCur = r === S.rows.length - 1 && !S.finished;
+    return `<div class="row" data-r="${r}"><div class="shelf">${row.cells.map((c, i) => cellHTML(c, r, i, isCur)).join('')}</div></div>`;
+  }).join('');
+}
+function renderTray(slideIn = false){
+  const st = step(), row = curRow();
+  const taken = new Set(row.cells.map(c => c.c).filter(Boolean));
+  let html = CONFIG.colors.slice(0, st.colorCount).map((c, k) => {
+    const t = taken.has(c.id);
+    return `<button class="tray-b ${t ? 'taken' : ''} ${slideIn ? 'in' : ''}" style="animation-delay:${k * 70}ms" data-color="${c.id}"
+      ${t || busy || S.finished ? 'disabled' : ''} aria-label="放入${c.name}色药水">${bottleSVG(c.hex)}</button>`;
+  }).join('');
+  $('tray').classList.remove('out');
+  $('tray').innerHTML = html;
+}
+function render(slideIn){ inflight.clear(); layout(); renderHud(); renderRows(); renderTray(slideIn); setScroll(0); renderDev() }
+
+/* ======================= 台子拖拽 ======================= */
+let scrollY = 0;                 // >0 表示向下拖、露出上方的历史层
+const maxScroll = () => Math.max(0, $('rows').offsetHeight + 6 - $('board').clientHeight);
+function setScroll(y, snap = false){
+  const sc = $('scroll');
+  sc.classList.toggle('snap', snap && !reduced);
+  scrollY = y;
+  sc.style.transform = `translateY(${y}px)`;
+  const m = maxScroll();
+  $('back-btn').hidden = !(y > 30 && !busy);
+  $('scroll-hint').style.opacity = m > 0 && y < 5 && S.rows.length > 1 && !busy ? 1 : 0;
+}
+function scrollToCurrent(){
+  if (scrollY === 0) return Promise.resolve();
+  setScroll(0, true);
+  return sleep(360);
+}
+let drag = null, dragMoved = false;
+function initDrag(){
+  const board = $('board');
+  const clampRubber = y => { const m = maxScroll(); if (y < 0) return y * .35; if (y > m) return m + (y - m) * .35; return y };
+  board.addEventListener('pointerdown', e => {
+    if (busy || e.button > 0) return;
+    drag = { id: e.pointerId, y0: e.clientY, s0: scrollY, moved: false, lastY: e.clientY, lastT: performance.now(), v: 0 };
+  });
+  board.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dy = e.clientY - drag.y0;
+    if (!drag.moved && Math.abs(dy) > 6){ drag.moved = true; board.setPointerCapture(e.pointerId); board.classList.add('dragging') }
+    if (!drag.moved) return;
+    const now = performance.now();
+    drag.v = (e.clientY - drag.lastY) / Math.max(1, now - drag.lastT);
+    drag.lastY = e.clientY; drag.lastT = now;
+    setScroll(clampRubber(drag.s0 + dy));
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (drag.moved){
+      dragMoved = true; setTimeout(() => dragMoved = false, 0);
+      board.classList.remove('dragging');
+      // 惯性 + 吸附到整层
+      const m = maxScroll();
+      let target = scrollY + drag.v * 180;
+      target = Math.max(0, Math.min(m, Math.round(target / geo.rowH) * geo.rowH));
+      setScroll(target, true);
+    }
+    drag = null;
+  };
+  board.addEventListener('pointerup', end);
+  board.addEventListener('pointercancel', end);
+  board.addEventListener('wheel', e => {
+    if (busy) return;
+    e.preventDefault();
+    const m = maxScroll();
+    setScroll(Math.max(0, Math.min(m, scrollY - e.deltaY)), false);
+  }, { passive: false });
+  $('back-btn').onclick = () => setScroll(0, true);
+}
+
+/* ======================= 特效 ======================= */
+const fx = $('fx');
+const center = r => [r.left + r.width / 2, r.top + r.height / 2];
+function flyBottle(hex, from, to, { dur = 380, arc = -50, keep = false } = {}){
+  const el = document.createElement('div');
+  el.className = 'fly'; el.innerHTML = bottleSVG(hex);
+  el.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px`;
+  fx.appendChild(el);
+  const [fx0, fy0] = center(from), [tx, ty] = center(to);
+  const dx = tx - fx0, dy = ty - fy0, s = to.width / from.width;
+  const a = el.animate([
+    { transform: 'translate(0,0) scale(1)' },
+    { transform: `translate(${dx / 2}px,${dy / 2 + arc}px) scale(${(1 + s) / 2 * 1.08})`, offset: .5 },
+    { transform: `translate(${dx}px,${dy}px) scale(${s})` },
+  ], { duration: reduced ? 1 : dur, easing: 'ease-in-out', fill: 'forwards' });
+  return a.finished.then(() => { if (!keep) el.remove(); return el });
+}
+function particles(rect, colors, n = 12, { spread = 70, gravity = 60, size = 7, dur = 650 } = {}){
+  const [cx, cy] = center(rect);
+  for (let k = 0; k < n; k++){
+    const p = document.createElement('div'); p.className = 'p';
+    const sz = size * (.5 + Math.random());
+    p.style.cssText = `left:${cx - sz / 2}px;top:${cy - sz / 2}px;width:${sz}px;height:${sz}px;background:${colors[k % colors.length]}`;
+    fx.appendChild(p);
+    const ang = Math.random() * Math.PI * 2, d = spread * (.4 + Math.random() * .6);
+    p.animate([
+      { transform: 'translate(0,0) rotate(0)', opacity: 1 },
+      { transform: `translate(${Math.cos(ang) * d}px,${Math.sin(ang) * d + gravity}px) rotate(${Math.random() * 540}deg)`, opacity: 0 },
+    ], { duration: reduced ? 1 : dur * (.7 + Math.random() * .5), easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' }).finished.then(() => p.remove());
+  }
+}
+const retrigger = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls) };
+const q = sel => document.querySelector(sel);
+
+/* ======================= 放置 / 取回 ======================= */
+async function placeFromTray(btn){
+  if (busy || S.finished) return;
+  const row = curRow(), i = row.cells.findIndex(c => !c.c);
+  if (i < 0) return;
+  if (S.elixirs <= 0){ retrigger($('counter'), 'shake'); if (DEV.allowEarn) openEarn(); return }
+  if (scrollY !== 0){ setScroll(0) }     // 放瓶时立即回到当前层
+  const color = btn.dataset.color, from = btn.getBoundingClientRect();
+  const target = q(`.row[data-r="${S.rows.length - 1}"] .cell[data-i="${i}"] .ghost`);
+  const to = target.getBoundingClientRect();
+  S.elixirs--; row.cells[i] = { c: color };
+  inflight.add(i);
+  save();
+  $('count').textContent = S.elixirs; retrigger($('counter'), 'bump');
+  renderRows(); renderTray(); renderDev();
+  await flyBottle(colorOf(color).hex, from, to);
+  inflight.delete(i);
+  const b2 = q(`.bottle[data-r="${S.rows.length - 1}"][data-i="${i}"]`);
+  if (b2 && curRow().cells[i].c === color) b2.classList.remove('hidden');
+  // 摆满且没有瓶子还在飞 → 自动提交
+  if (inflight.size === 0 && curRow().cells.every(c => c.c)) { await sleep(180); if (inflight.size === 0) brew() }
+}
+async function takeBack(btn){
+  if (busy || dragMoved) return;
+  const r = +btn.dataset.r, i = +btn.dataset.i, row = curRow();
+  if (inflight.has(i)) return;
+  if (r !== S.rows.length - 1 || row.cells[i].locked || !row.cells[i].c) return;
+  const color = row.cells[i].c, from = btn.getBoundingClientRect();
+  row.cells[i] = { c: null };
+  S.elixirs++;
+  save();
+  $('count').textContent = S.elixirs; retrigger($('counter'), 'bump');
+  renderRows(); renderTray(); renderDev();
+  const tb = q(`.tray-b[data-color="${color}"]`);
+  tb.classList.add('arriving');
+  await flyBottle(colorOf(color).hex, from, tb.getBoundingClientRect(), { arc: -30 });
+  tb.classList.remove('arriving');
+}
+
+/* ======================= 检测 ======================= */
+async function brew(){
+  const row = curRow(), r = S.rows.length - 1;
+  if (busy || S.finished || inflight.size || !row.cells.every(c => c.c)) return;
+  busy = true;
+  await scrollToCurrent();
+  const target = decideTarget(row);
+  renderRows(); renderTray(); renderDev();   // 禁用交互
+  $('tray').classList.add('out');
+
+  for (let i = 0; i < row.cells.length; i++){
+    const cell = row.cells[i];
+    if (cell.locked) continue;
+    await sleep(320);
+    const cellEl = q(`.row[data-r="${r}"] .cell[data-i="${i}"]`);
+    const bottle = cellEl.querySelector('.bottle');
+    const hex = colorOf(cell.c).hex;
+    if (cell.c === target[i]){
+      cell.ok = true;
+      cellEl.classList.add('ok', 'flash');
+      retrigger(bottle, 'hop');
+      particles(bottle.getBoundingClientRect(), ['#fff6a8', '#86d85f', '#ffffff'], 10, { gravity: -10, size: 6 });
+    } else {
+      cell.ok = false; cell.seed = (Math.random() * 1e9) | 0;
+      retrigger(bottle, 'wobble');
+      await sleep(330);
+      const rect = bottle.getBoundingClientRect();
+      bottle.style.visibility = 'hidden';
+      particles(rect, [hex, '#e6f5ff', shade(hex, -.2), '#ffffff'], 18, { spread: 60, gravity: 70, size: 9 });
+      const holder = cellEl.querySelector('.holder');
+      holder.insertAdjacentHTML('afterbegin', `<div class="splat new">${splatSVG(hex, cell.seed)}</div>`);
+    }
+  }
+  await sleep(500);
+
+  if (row.cells.every(c => c.ok)){
+    settleLevel();
+    save();
+    await pourAll(r);
+    busy = false;
+    renderDev();
+    showSuccess();
+    return;
+  }
+
+  // 新的一层：正确的瓶子带下来并锁定
+  S.rows.push(makeRow(row.cells.length, row));
+  if (S.rows.length > 30) S.rows.splice(0, S.rows.length - 30);
+  save();
+  busy = false;
+  renderRows();
+  setScroll(0);
+  $('rows').animate([{ transform: `translateY(${geo.rowH}px)` }, { transform: 'translateY(0)' }],
+    { duration: reduced ? 1 : 550, easing: 'cubic-bezier(.3,.8,.3,1)' });
+  const nr = S.rows.length - 1;
+  document.querySelectorAll(`.row[data-r="${nr}"] .cell.ok`).forEach(el => el.classList.add('flash'));
+  await sleep(250);
+  renderTray(true);
+  renderDev();
+  await sleep(500);
+  checkFail();
+}
+
+/* 本次检测的答案：固定模式用开局答案；其余模式按 V1.1 从一致候选集中挑选 */
+function decideTarget(row){
+  const n = row.cells.length, ids = idsOf(n);
+  const free = row.cells.map((c, i) => c.locked ? -1 : i).filter(i => i >= 0);
+  const guessIds = row.cells.map(c => c.c);
+  const first = S.rows.length === 1;
+  S.lv.cost += free.length; S.lv.tries++;
+  const attempt = S.lv.tries;
+  if (first){
+    const prev = S.firstGuesses.length ? S.firstGuesses[S.firstGuesses.length - 1].g : null;
+    S.firstGuesses.push({ g: guessIds, t: tendencyOf(guessIds, prev) });
+  }
+  const C = candidates();
+  if (S.lv.mode === 'fixed'){
+    const g = guessIds.map(c => ids.indexOf(c)), t = S.secret.map(c => ids.indexOf(c));
+    S.lv.last = { C: C.length, P: '—', hit: false, marks: free.filter(i => g[i] === t[i]).length, reason: '固定答案（对照组）' };
+    return S.secret;
+  }
+  const g = guessIds.map(c => ids.indexOf(c));
+  const pick = DDA.selectTarget(C, g, free, curPMatch(), attempt, S.lv.T, S.lv.cap);
+  S.lv.last = pick;
+  S.secret = pick.target.map(k => ids[k]);      // 当前答案（与全部历史一致）
+  return S.secret;
+}
+function settleLevel(){
+  const n = step().slots, rest = levelSpecs(S.step + 1);
+  const r = DDA.settle(S.dda, n, S.lv.T, S.lv.cap, S.lv.cost, S.elixirs, rest, S.lv.tc);
+  S.hist.push({ k: S.step + 1, n, T: S.lv.T, cap: S.lv.cap, cost: S.lv.cost, tries: S.lv.tries, q: r.q, w1: r.w1, lvl: S.lv.alert, mode: S.lv.mode,
+                W: S.dda.W, next: S.dda.alert, pfail: rest.length ? DDA.pfail(rest, S.elixirs, S.lv.tc) : 0 });
+}
+
+/* 失败判定：当前层还需要的瓶子数 > 持有药水数 */
+function neededBottles(){ return curRow().cells.filter(c => !c.c).length }
+function checkFail(){
+  if (S.finished || busy) return false;
+  const need = neededBottles();
+  if (need <= S.elixirs) return false;
+  if (!S.failed) S.hist.push({ k: S.step + 1, n: step().slots, T: S.lv.T, cap: S.lv.cap, cost: S.lv.cost, tries: S.lv.tries, fail: true, lvl: S.lv.alert, mode: S.lv.mode });
+  S.failed = true;
+  save(); renderDev();
+  busy = true; renderTray(); busy = false;           // 托盘置灰
+  retrigger($('counter'), 'shake');
+  $('liquid').setAttribute('fill', '#5b4a66'); $('cauldron').style.setProperty('--brew', '#554466');
+  modal('挑战失败', `<div class="gift" style="font-size:18px">药水不足</div>
+    <p style="margin:8px 0 0">还需要 <b>${need}</b> 瓶，只剩 <b>${S.elixirs}</b> 瓶<br>止步第 ${S.step + 1} 关，将从第 1 关重新开始</p>`,
+    [{ label: '重新开始', cls: 'warn', on: restartGame }], { center: true });
+  return true;
+}
+function restartGame(){
+  aiAuto = false; simResult = null;          // 面板运行数据：AI 状态、模拟结果
+  freshState(); save();                       // 进度、权重、关卡记录、首猜埋点、本关实时
+  $('liquid').setAttribute('fill', '#d85cf0'); $('cauldron').style.setProperty('--brew', '#e05cff');
+  render(true);
+  $('rows').animate([{ opacity: 0, transform: 'translateY(40px)' }, { opacity: 1, transform: 'none' }], { duration: reduced ? 1 : 400, easing: 'ease-out' });
+}
+
+async function pourAll(r){
+  const mouth = $('mouth').getBoundingClientRect();
+  const cells = curRow().cells;
+  const liquid = $('liquid'), glow = $('cauldron');
+  for (let i = 0; i < cells.length; i++){
+    const b = q(`.bottle[data-r="${r}"][data-i="${i}"]`);
+    const from = b.getBoundingClientRect(), hex = colorOf(cells[i].c).hex;
+    b.style.visibility = 'hidden';
+    const above = new DOMRect(mouth.left + mouth.width / 2 - from.width * .45 + (i - (cells.length - 1) / 2) * 14,
+                              mouth.top - from.height * 1.05, from.width * .9, from.height * .9);
+    flyBottle(hex, from, above, { dur: 520, arc: -40, keep: true }).then(async el => {
+      const [ex, ey] = center(el.getBoundingClientRect());
+      el.style.transformOrigin = '50% 50%';
+      const cur = getComputedStyle(el).transform;
+      const tilt = el.animate([{ transform: cur }, { transform: `${cur} rotate(${i % 2 ? -125 : 125}deg)` }],
+        { duration: reduced ? 1 : 300, fill: 'forwards', easing: 'ease-out' });
+      await tilt.finished;
+      for (let k = 0; k < 6; k++){
+        particles(new DOMRect(ex - 3, ey + 10, 6, 6), [hex], 2, { spread: 6, gravity: mouth.top - ey + 10, size: 7, dur: 420 });
+        await sleep(60);
+      }
+      liquid.setAttribute('fill', hex);
+      glow.style.setProperty('--brew', hex);
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 1 : 250, fill: 'forwards' }).finished.then(() => el.remove());
+    });
+    await sleep(260);
+  }
+  await sleep(1300);
+  liquid.setAttribute('fill', '#ff6ef5');
+  glow.style.setProperty('--brew', '#ffe46e');
+  retrigger($('cauldron'), 'burst');
+  particles(mouth, CONFIG.colors.map(c => c.hex).concat(['#ffffff', '#ffe46e']), 40, { spread: 130, gravity: -30, size: 9, dur: 1000 });
+  await sleep(900);
+  liquid.setAttribute('fill', '#d85cf0'); glow.style.setProperty('--brew', '#e05cff');
+}
+
+/* ======================= 弹窗 ======================= */
+function modal(title, bodyHTML, buttons, { center = false } = {}){
+  $('sheet').innerHTML = `<h2>${title}</h2><div class="body ${center ? 'center' : ''}">${bodyHTML}</div>
+    <div class="btns">${buttons.map((b, k) => `<button class="btn ${b.cls || 'go'}" data-k="${k}">${b.label}</button>`).join('')}</div>`;
+  $('modal').hidden = false;
+  $('sheet').querySelectorAll('.btn').forEach(el => el.onclick = () => { const b = buttons[+el.dataset.k]; $('modal').hidden = true; b.on && b.on() });
+  const first = $('sheet').querySelector('.btn'); first && first.focus();
+}
+function showSuccess(){
+  const st = step(), tries = S.lv.tries;
+  modal('配方正确!', `<div class="gift">${ICONS[st.reward]}<span>${CONFIG.rewardNames[st.reward]} ${st.amount}</span></div>
+    <p style="margin:8px 0 0">第 ${S.step + 1} 关 · 尝试 ${tries} 次 · 消耗 ${S.lv.cost} 瓶</p>`,
+    [{ label: '领取', on: nextStep }], { center: true });
+}
+function nextStep(){
+  if (S.step + 1 >= CONFIG.steps.length){
+    S.finished = true; save(); render();
+    modal('全部完成!', `${CONFIG.steps.length} 个配方全部破解，大宝箱已到手！<br>共消耗 ${DEV.start - S.elixirs} 瓶，剩余 ${S.elixirs} 瓶`,
+      [{ label: '再玩一次', on: restartGame }], { center: true });
+    return;
+  }
+  S.step++; initStep(S.step); save();
+  render(true);
+  $('rows').animate([{ opacity: 0, transform: 'translateY(40px)' }, { opacity: 1, transform: 'none' }], { duration: reduced ? 1 : 400, easing: 'ease-out' });
+  setTimeout(checkFail, reduced ? 0 : 700);
+}
+function openEarn(){
+  $('sheet').innerHTML = `<h2>获取药水</h2><div class="body center">通关关卡可获得药水，难度越高获得越多（模拟）</div>
+    <div class="lv">${CONFIG.levels.map((l, k) => `<button class="${l.cls}" data-k="${k}">${l.name}<small>+${l.gain}</small></button>`).join('')}</div>
+    <div class="btns"><button class="btn plain" id="earn-close">关闭</button></div>`;
+  $('modal').hidden = false;
+  $('sheet').querySelectorAll('.lv button').forEach(b => b.onclick = () => {
+    const g = CONFIG.levels[+b.dataset.k].gain;
+    S.elixirs += g; save(); renderDev();
+    $('count').textContent = S.elixirs; retrigger($('counter'), 'bump');
+    particles($('counter').getBoundingClientRect(), ['#ffc83d', '#fff', '#b04ce8'], 14, { gravity: -20 });
+  });
+  $('earn-close').onclick = () => { $('modal').hidden = true };
+  $('earn-close').focus();
+}
+function openInfo(){
+  modal('玩法说明', `<ol class="ruleslist">
+    <li>点击底部药水瓶放到台子上，每放一瓶消耗 1 个药水；提交前点台子上的瓶子可取回（返还 1 个）。</li>
+    <li>台子摆满后自动检测：位置正确的瓶子保留，格子变绿；错误的瓶子会碎掉，留下颜色印记。</li>
+    <li>台子自动上移出新的一层，正确的瓶子会带下来，继续补齐其余格子。</li>
+    <li>全部正确后，药水倒入坩埚，领取奖励并进入下一关（共 ${CONFIG.steps.length} 关）。</li>
+    <li>上下拖动台子（或滚轮）可以查看之前每一次的排列。</li>
+    <li>如果当前层还需要的瓶子数多于剩余药水，挑战失败，游戏从第 1 关重新开始。</li>
+    <li>每一关的配方中，同一种颜色只出现一次。</li>
+    <li>理性摆放时，每次检测至少会标对 1 格；每关的难度会有所不同。</li></ol>`, [{ label: '知道了' }]);
+}
+
+/* ======================= 开发者面板 ======================= */
+let aiAuto = false, simResult = null, simBusy = false;
+const fmtP = v => (v * 100).toFixed(1) + '%';
+const chip = lvl => `<span class="chip lv-${lvl}">${DDA.LV_NAME[lvl]}</span>`;
+function wRow(label, v, total){
+  const lvl = DDA.LV_HEX[total ? S.dda.alert : 'green'];
+  const ticks = total ? [.3, .5, .7].map(t => `<span class="tick" style="left:${t * 100}%"></span>`).join('') : '';
+  return `<div class="wrow"><span>${label}</span><div class="wbar ${total ? 'total' : ''}" style="--lvl:${lvl}"><i style="width:${Math.min(1, v) * 100}%"></i>${ticks}</div><span>${v.toFixed(3)}</span></div>`;
+}
+function renderDev(){
+  const el = $('dev');
+  el.hidden = !DEV.open;
+  $('dev-toggle').setAttribute('aria-expanded', DEV.open);
+  if (!DEV.open || !S) return;
+  const n = step().slots, stc = step();
+  const C = S.finished ? [] : candidates();
+  const rs = DDA.restStats(levelSpecs(S.step + 1), DEV.tc);
+  const lvMax = Math.max(...Object.keys(DDA.DIST[DDA.keyOf(n, S.lv.T, S.lv.cap)]).map(Number));
+  const tcName = { random: '随机 0~最大', max: '固定为最大', off: '关闭' };
+  const modeName = { fixed: '固定答案', rule: '仅保底', dda: '保底 + DDA' };
+  const last = S.lv.last;
+  const ans = S.secret && DEV.showAnswer
+    ? `<span class="answer">${S.secret.map(c => `<i style="background:${colorOf(c).hex}" title="${colorOf(c).name}"></i>`).join('')}</span>`
+    : (S.secret ? '已隐藏' : `未确定`);
+  const fg = S.firstGuesses.map(f => `<span class="answer" title="${f.t}">${f.g.map(c => `<i style="background:${colorOf(c).hex}"></i>`).join('')}</span> ${f.t}`).join('<br>') || '—';
+  const scroll = el.scrollTop;
+  el.innerHTML = `
+  <div class="top"><b>DEV · DDA V1.1</b><button class="x" data-act="close">收起</button></div>
+
+  <h3>模式</h3>
+  <div class="seg">${['fixed', 'rule', 'dda'].map(m => `<button data-mode="${m}" aria-pressed="${DEV.mode === m}">${modeName[m]}</button>`).join('')}</div>
+  <div class="ctl">
+    <label>强制档位 <select id="dev-force">${[['', '自动'], ['green', '绿'], ['yellow', '黄'], ['orange', '橙'], ['red', '红']].map(([v, t]) => `<option value="${v}" ${DEV.force === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>初始药水 <input type="number" id="dev-start" min="20" max="200" value="${DEV.start}"></label>
+  </div>
+  <div class="ctl">
+    <label>T / cap <select id="dev-tc">${Object.entries(tcName).map(([v, t]) => `<option value="${v}" ${DEV.tc === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+  </div>
+  <div class="ctl">
+    <label><input type="checkbox" id="dev-answer" ${DEV.showAnswer ? 'checked' : ''}> 显示答案</label>
+    <label><input type="checkbox" id="dev-earn" ${DEV.allowEarn ? 'checked' : ''}> 允许「+」补药水</label>
+  </div>
+  <p class="dnote">模式、档位、T/cap 抽取方式从下一关生效；初始药水在重开后生效。</p>
+
+  <h3>本关实时</h3>
+  <dl class="kv">
+    <dt>关卡</dt><dd>${S.finished ? '已通关' : `第 ${S.step + 1} 关 · n = ${n}`}</dd>
+    <dt>本关模式 / 档位</dt><dd>${modeName[S.lv.mode]} · ${chip(S.lv.alert)}</dd>
+    <dt>p_match</dt><dd>${curPMatch()}${n <= 3 && S.lv.mode === 'dda' ? '（n=3 不启用）' : ''}</dd>
+    <dt>本关 T / cap</dt><dd>${S.lv.mode === 'fixed' ? '—' : `T=${S.lv.T > 1 ? S.lv.T : '不限'}（抽到 ${S.lv.T}） · cap=${S.lv.cap || '不限'}（最大 ${stc.Tmax || '—'} / ${stc.capMax || '—'}）`}</dd>
+    <dt>尝试 / 已消耗</dt><dd>${S.lv.tries} 次 / ${S.lv.cost} 瓶${S.lv.mode === 'fixed' ? `（理论上限 ${n * n}）` : `（本配置上限 ${lvMax}）`}</dd>
+    <dt>一致候选集 |C|</dt><dd>${C.length} / ${DDA.perms(n).length}</dd>
+    <dt>当前答案</dt><dd>${ans}</dd>
+  </dl>
+  <div class="logline">${last ? `上次检测：候选 ${last.C} · 保底集合 ${last.P} · 标对 ${last.marks}<br>${last.reason}` : '本关还未检测'}</div>
+
+  <h3>风险</h3>
+  ${wRow('W₁', S.dda.W1)}${wRow('W₂', S.dda.W2)}${wRow('W₃', S.dda.W3)}${wRow('W', S.dda.W, true)}
+  <dl class="kv" style="margin-top:6px">
+    <dt>下一关档位</dt><dd>${chip(S.dda.alert)}${DEV.force ? `（强制 ${DDA.LV_NAME[DEV.force]}）` : ''}</dd>
+    <dt>本关开局 P_fail</dt><dd>${fmtP(S.lv.pfail)}（仅保底）</dd>
+    <dt>药水 / 后续关卡 E / M</dt><dd>${S.elixirs} / ${rs.E.toFixed(1)} / ${rs.M}</dd>
+    <dt>连续倒霉 bad</dt><dd>${S.dda.bad} · w₁ 历史 [${S.dda.w1h.join(', ')}]</dd>
+  </dl>
+
+  <h3>关卡记录</h3>
+  <table><tr><th>关</th><th>n</th><th>T/c</th><th>档</th><th>次</th><th>耗</th><th>q</th><th>w₁</th><th>W</th><th>下关</th></tr>
+  ${S.hist.map(h => h.fail
+    ? `<tr><td>${h.k}</td><td>${h.n}</td><td>${h.T}/${h.cap}</td><td>${h.lvl[0].toUpperCase()}</td><td>${h.tries}</td><td>${h.cost}</td><td colspan="4" style="color:#ff6b6b">失败</td></tr>`
+    : `<tr><td>${h.k}</td><td>${h.n}</td><td>${h.T}/${h.cap}</td><td>${h.lvl[0].toUpperCase()}</td><td>${h.tries}</td><td>${h.cost}</td><td>${fmtP(h.q)}</td><td>${h.w1}</td><td>${h.W.toFixed(2)}</td><td>${h.next[0].toUpperCase()}</td></tr>`).join('') || '<tr><td colspan="10" style="text-align:left">暂无</td></tr>'}
+  </table>
+
+  <h3>调试工具</h3>
+  <div class="ctl">
+    <button class="dbtn" data-act="pot-5">药水 −5</button>
+    <button class="dbtn" data-act="pot+5">药水 +5</button>
+    <button class="dbtn" data-act="restart" ${busy ? 'disabled' : ''}>重开游戏</button>
+    <button class="dbtn" data-act="ai-row" ${busy || S.finished ? 'disabled' : ''}>AI 摆一层</button>
+    <button class="dbtn ${aiAuto ? 'on' : ''}" data-act="ai-auto">${aiAuto ? 'AI 自动玩中…' : 'AI 自动玩'}</button>
+  </div>
+  <p class="dnote">AI 为「理性随机」玩家：每层从一致候选集中随机挑一个排列。</p>
+  <div class="ctl">
+    <button class="dbtn" data-act="sim" ${simBusy ? 'disabled' : ''}>${simBusy ? '模拟中…' : '按当前设置模拟 2,000 局'}</button>
+  </div>
+  <div class="simres">${simResult ? `<dl class="kv">
+    <dt>设置</dt><dd>${modeName[simResult.mode]} · 初始 ${simResult.start} · T/cap ${tcName[simResult.tc]}${simResult.force ? ' · 强制' + DDA.LV_NAME[simResult.force] : ''}</dd>
+    <dt>1 次通关 / ≤2 次通关</dt><dd>${fmtP(simResult.p1)} / ${fmtP(simResult.p2)}（按关卡计）</dd>
+    <dt>失败率</dt><dd>${fmtP(simResult.fail)}</dd>
+    <dt>通关局平均消耗</dt><dd>${simResult.spent.toFixed(1)} 瓶</dd>
+    <dt>至少被干预一关</dt><dd>${simResult.mode === 'dda' ? fmtP(simResult.interv) : '—'}</dd>
+    <dt>失败关卡分布</dt><dd>${Object.entries(simResult.failAt).map(([k, v]) => `L${k}:${v}`).join(' ') || '—'}</dd></dl>` : ''}</div>
+
+  <h3>埋点 · 首猜倾向</h3>
+  <div style="font-size:11px">${fg}</div>`;
+  el.scrollTop = scroll;
+}
+function initDev(){
+  const el = $('dev');
+  $('dev-toggle').onclick = () => { DEV.open = !DEV.open; saveDev(); renderDev() };
+  el.addEventListener('click', e => {
+    const m = e.target.closest('[data-mode]');
+    if (m){ DEV.mode = m.dataset.mode; saveDev(); renderDev(); return }
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    const act = a.dataset.act;
+    if (act === 'close'){ DEV.open = false; saveDev(); renderDev() }
+    if (act === 'pot-5' || act === 'pot+5'){
+      S.elixirs = Math.max(0, S.elixirs + (act === 'pot+5' ? 5 : -5)); save();
+      $('count').textContent = S.elixirs; retrigger($('counter'), 'bump'); renderDev();
+      if (act === 'pot-5') setTimeout(checkFail, 50);
+    }
+    if (act === 'ai-row') aiPlayRow();
+    if (act === 'restart' && !busy){ $('modal').hidden = true; restartGame() }
+    if (act === 'ai-auto'){ aiAuto = !aiAuto; renderDev(); if (aiAuto) aiLoop() }
+    if (act === 'sim'){
+      simBusy = true; renderDev();
+      setTimeout(() => {
+        const opts = { start: DEV.start, mode: DEV.mode, force: DEV.force, levels: levelSpecs(), tc: DEV.tc };
+        simResult = Object.assign(DDA.simulate(2000, opts), opts);
+        simBusy = false; renderDev();
+      }, 30);
+    }
+  });
+  el.addEventListener('change', e => {
+    if (!e.isTrusted) return;          // 只响应真实的用户操作（页面更新时恢复的表单值不算）
+    if (e.target.id === 'dev-force') DEV.force = e.target.value;
+    if (e.target.id === 'dev-start') DEV.cfgStart = CONFIG.startElixirs, DEV.start = Math.max(20, Math.min(200, +e.target.value || CONFIG.startElixirs));
+    if (e.target.id === 'dev-answer') DEV.showAnswer = e.target.checked;
+    if (e.target.id === 'dev-tc') DEV.tc = e.target.value;
+    if (e.target.id === 'dev-earn'){ DEV.allowEarn = e.target.checked; $('btn-earn').hidden = !DEV.allowEarn }
+    saveDev(); renderDev();
+  });
+}
+async function aiPlayRow(){
+  if (busy || S.finished || !$('modal').hidden) return false;
+  const row = curRow(), n = row.cells.length, ids = idsOf(n);
+  // 先取回本层未锁定的瓶子（直接改状态，退还药水）
+  row.cells.forEach((c, i) => { if (c.c && !c.locked){ row.cells[i] = { c: null }; S.elixirs++ } });
+  renderRows(); renderTray();
+  const C = candidates();
+  const g = C[Math.floor(Math.random() * C.length)].map(k => ids[k]);
+  for (let i = 0; i < n; i++){
+    if (row.cells[i].locked) continue;
+    if (S.elixirs <= 0 || busy) return false;
+    const b = q(`.tray-b[data-color="${g[i]}"]`);
+    if (!b) return false;
+    await placeFromTray(b);
+  }
+  return true;
+}
+async function aiLoop(){
+  while (aiAuto){
+    await sleep(350);
+    if (busy) continue;
+    if (!$('modal').hidden){
+      const title = $('sheet').querySelector('h2')?.textContent || '';
+      if (title.includes('失败') || title.includes('全部完成') || title.includes('重置')){ aiAuto = false; break }
+      $('sheet').querySelector('.btn')?.click();
+      continue;
+    }
+    if (S.finished){ aiAuto = false; break }
+    await aiPlayRow();
+  }
+  renderDev();
+}
+
+/* ======================= 启动 ======================= */
+function start(){
+  if (!load() || S.finished) freshState();
+  $('counter-ico').innerHTML = rainbowFlask();
+  $('chest').innerHTML = ICONS.chest;
+  $('tray').addEventListener('click', e => {
+    const b = e.target.closest('.tray-b'); if (b && !b.disabled) placeFromTray(b);
+  });
+  initDrag();
+  initDev();
+  $('rows').addEventListener('click', e => { if (dragMoved) return; const b = e.target.closest('.bottle'); if (b && !b.disabled) takeBack(b) });
+  $('btn-earn').onclick = openEarn;
+  $('btn-info').onclick = openInfo;
+  $('btn-reset').onclick = () => modal('重置活动?', '进度和药水数量将恢复到初始状态。', [
+    { label: '重置', cls: 'warn', on: restartGame }, { label: '取消', cls: 'plain' }], { center: true });
+  addEventListener('resize', () => { if (!busy) { layout(); setScroll(Math.min(scrollY, maxScroll())) } });
+  setInterval(renderTimer, 30000);
+  render(true);
+  if (curRow().cells.every(c => c.ok)) showSuccess();
+  else checkFail();
+}
+start();
+</script>
+
+</body></html>
