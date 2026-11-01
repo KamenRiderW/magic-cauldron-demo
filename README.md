@@ -13,6 +13,8 @@
 1. **核心循环是否成立**：摆放 → 检测 → 推理 → 修正，资源约束让玩家认真推理，而不是随手乱试。
 2. **失败体验是否可控**：用保底进展、答案一致性、随机难度参数和 DDA，让理性玩家尽量不因运气失败；即使失败，也发生得早、说得清楚。
 
+**在线试玩：** https://kamenriderw.github.io/magic-cauldron-demo/
+
 完整设计说明见 [`docs/DESIGN.md`](docs/DESIGN.md)，数值与 DDA 细节见 [`docs/DIFFICULTY.md`](docs/DIFFICULTY.md)。
 
 > 本项目为非官方学习/研究 Demo，参考了 Royal Match 的「Magic Cauldron」活动玩法，与 Royal Match、Dream Games 无任何关联。所有美术均由 CSS / SVG 绘制，不包含原作素材。代码以 MIT License 开源；涉及原作名称、玩法与商标的商业使用，请自行评估相关风险。
@@ -141,7 +143,9 @@ python tools/run.py                  # 不同初始药水下的整局失败率�
 
 ## 演示视频
 
-完整演示视频（约 3.5 分钟，含中文配音与字幕）：待补充 Bilibili 链接。
+[Bilibili：魔法坩埚玩法 Demo（约 3.5 分钟）](https://www.bilibili.com/video/BV1yBxs6CEn6/)
+
+视频含中文配音与字幕；配音为 AI 合成语音，画面为真实运行的 Demo 录屏。
 
 ## 已知限制
 
